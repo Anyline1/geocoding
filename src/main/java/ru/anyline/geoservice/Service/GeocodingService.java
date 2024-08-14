@@ -1,13 +1,14 @@
 package ru.anyline.geoservice.Service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import ru.anyline.geoservice.Entity.GeocodingCache;
 import ru.anyline.geoservice.Repository.GeocodingCacheRepository;
 
+import java.util.Date;
 import java.util.Optional;
 
 @Service
@@ -16,34 +17,66 @@ public class GeocodingService {
     @Value("${api.key}")
     private String apiKey;
 
-    @Autowired
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
     private final GeocodingCacheRepository cacheRepository;
-
 
     public GeocodingService(GeocodingCacheRepository cacheRepository) {
         this.cacheRepository = cacheRepository;
+        this.restTemplate = new RestTemplate();
+        this.objectMapper = new ObjectMapper();
     }
 
-    @Cacheable("geocodingCache")
     public String geocode(String address) {
+
+        String query = "geocode:" + address;
+        Optional<GeocodingCache> cachedResult = cacheRepository.findByQuery(query);
+        if (cachedResult.isPresent()) {
+            return cachedResult.get().getResponse();
+        }
+
         String url = "https://api.opencagedata.com/geocode/v1/json?q=" + address + "&key=" + apiKey;
-        RestTemplate restTemplate = new RestTemplate();
-        return restTemplate.getForObject(url, String.class);
+        String response = restTemplate.getForObject(url, String.class);
+
+        try {
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode location = root.path("results").get(0).path("geometry");
+            double latitude = location.path("lat").asDouble();
+            double longitude = location.path("lng").asDouble();
+            String result = String.format("{\"latitude\": %f, \"longitude\": %f, \"address\": \"%s\"}", latitude, longitude, address);
+            cacheRepository.save(new GeocodingCache(query, result, new Date()));
+
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "{\"error\": \"Unable to geocode the address\"}";
+        }
     }
 
-    @Cacheable("geocodingCache")
     public String reverseGeocode(double lat, double lon) {
-        String url = "https://api.opencagedata.com/geocode/v1/json?q=" + lat + "," + lon + "&key=" + apiKey;
-        RestTemplate restTemplate = new RestTemplate();
-        return restTemplate.getForObject(url, String.class);
-    }
 
-    private void saveToCache(String query, String response) {
-        GeocodingCache cache = new GeocodingCache();
-        cache.setQuery(query);
-        cache.setResponse(response);
-        cache.setTimestamp(System.currentTimeMillis());
-        cacheRepository.save(cache);
+        String query = "reverse-geocode:" + lat + "," + lon;
+
+        Optional<GeocodingCache> cachedResult = cacheRepository.findByQuery(query);
+        if (cachedResult.isPresent()) {
+            return cachedResult.get().getResponse();
+        }
+
+        String url = "https://api.opencagedata.com/geocode/v1/json?q=" + lat + "," + lon + "&key=" + apiKey;
+        String response = restTemplate.getForObject(url, String.class);
+
+        try {
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode firstResult = root.path("results").get(0);
+            String formattedAddress = firstResult.path("formatted").asText();
+            String result = String.format("{\"latitude\": %f, \"longitude\": %f, \"address\": \"%s\"}", lat, lon, formattedAddress);
+            cacheRepository.save(new GeocodingCache(query, result, new Date()));
+
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "{\"error\": \"Unable to reverse geocode the coordinates\"}";
+        }
     }
 
 

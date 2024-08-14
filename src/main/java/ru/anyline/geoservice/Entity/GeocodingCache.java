@@ -2,9 +2,13 @@ package ru.anyline.geoservice.Entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.Date;
 
 @Entity
 @Data
+@NoArgsConstructor
 public class GeocodingCache {
 
     @Id
@@ -17,7 +21,13 @@ public class GeocodingCache {
     @Column(nullable = false)
     private String response;
 
-    @Column(nullable = false)
-    private long timestamp;
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdAt;
+
+    public GeocodingCache(String query, String response, Date createdAt) {
+        this.query = query;
+        this.response = response;
+        this.createdAt = createdAt;
+    }
 
 }
