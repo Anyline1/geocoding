@@ -10,7 +10,6 @@ import ru.anyline.geoservice.Service.GeocodingService;
 @RestController
 public class GeocodingController {
 
-    @Autowired
     private final GeocodingService geocodingService;
 
     public GeocodingController(GeocodingService geocodingService) {
