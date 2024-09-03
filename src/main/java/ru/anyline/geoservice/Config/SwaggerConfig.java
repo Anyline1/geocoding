@@ -13,7 +13,7 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("Geocoding service")
-                        .version("15.08")
+                        .version("03.09")
                         .description("API для кастомной URL"));
     }
 }
