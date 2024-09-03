@@ -2,7 +2,9 @@ package ru.anyline.geoservice.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import ru.anyline.geoservice.Entity.GeocodingCache;
@@ -16,12 +18,15 @@ public class GeocodingService {
 
     @Value("${api.key}")
     private String apiKey;
-
+    private final RedisTemplate<String, String> redisTemplate;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final GeocodingCacheRepository cacheRepository;
 
-    public GeocodingService(GeocodingCacheRepository cacheRepository) {
+    @Autowired
+    public GeocodingService(RedisTemplate<String, String> redisTemplate,
+                            GeocodingCacheRepository cacheRepository) {
+        this.redisTemplate = redisTemplate;
         this.cacheRepository = cacheRepository;
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
@@ -31,7 +36,9 @@ public class GeocodingService {
 
         String query = "geocode:" + address;
         Optional<GeocodingCache> cachedResult = cacheRepository.findByQuery(query);
-        if (cachedResult.isPresent()) {
+        if (isAddressCached(address)) {
+            return redisTemplate.opsForValue().get(address);
+        } else if (cachedResult.isPresent()) {
             return cachedResult.get().getResponse();
         }
 
@@ -45,12 +52,17 @@ public class GeocodingService {
             double longitude = location.path("lng").asDouble();
             String result = String.format("{\"latitude\": %f, \"longitude\": %f, \"address\": \"%s\"}", latitude, longitude, address);
             cacheRepository.save(new GeocodingCache(query, result, new Date()));
-
+            redisTemplate.opsForValue().set(address, result);
             return result;
         } catch (Exception e) {
             e.printStackTrace();
             return "{\"error\": \"Unable to geocode the address\"}";
         }
+    }
+
+    public boolean isAddressCached(String address){
+        Boolean hasKey = redisTemplate.hasKey(address);
+        return Boolean.TRUE.equals(hasKey);
     }
 
     public String reverseGeocode(double lat, double lon) {
