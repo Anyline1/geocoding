@@ -36,8 +36,8 @@ public class GeocodingService {
 
         String query = "geocode:" + address;
         Optional<GeocodingCache> cachedResult = cacheRepository.findByQuery(query);
-        if (isAddressCached(address)) {
-            return redisTemplate.opsForValue().get(address);
+        if (isAddressCached(query)) {
+            return redisTemplate.opsForValue().get(query);
         } else if (cachedResult.isPresent()) {
             return cachedResult.get().getResponse();
         }
@@ -52,7 +52,7 @@ public class GeocodingService {
             double longitude = location.path("lng").asDouble();
             String result = String.format("{\"latitude\": %f, \"longitude\": %f, \"address\": \"%s\"}", latitude, longitude, address);
             cacheRepository.save(new GeocodingCache(query, result, new Date()));
-            redisTemplate.opsForValue().set(address, result);
+            redisTemplate.opsForValue().set(query, result);
             return result;
         } catch (Exception e) {
             e.printStackTrace();
@@ -60,17 +60,21 @@ public class GeocodingService {
         }
     }
 
-    public boolean isAddressCached(String address){
-        Boolean hasKey = redisTemplate.hasKey(address);
+    public boolean isAddressCached(String query){
+        Boolean hasKey = redisTemplate.hasKey(query);
         return Boolean.TRUE.equals(hasKey);
     }
+
+
 
     public String reverseGeocode(double lat, double lon) {
 
         String query = "reverse-geocode:" + lat + "," + lon;
 
         Optional<GeocodingCache> cachedResult = cacheRepository.findByQuery(query);
-        if (cachedResult.isPresent()) {
+        if (isAddressCached(query)) {
+            return redisTemplate.opsForValue().get(query);
+        } else if (cachedResult.isPresent()) {
             return cachedResult.get().getResponse();
         }
 
@@ -83,7 +87,7 @@ public class GeocodingService {
             String formattedAddress = firstResult.path("formatted").asText();
             String result = String.format("{\"latitude\": %f, \"longitude\": %f, \"address\": \"%s\"}", lat, lon, formattedAddress);
             cacheRepository.save(new GeocodingCache(query, result, new Date()));
-
+            redisTemplate.opsForValue().set(query, result);
             return result;
         } catch (Exception e) {
             e.printStackTrace();
