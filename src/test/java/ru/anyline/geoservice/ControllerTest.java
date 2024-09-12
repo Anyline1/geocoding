@@ -15,6 +15,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static com.jayway.jsonpath.internal.path.PathCompiler.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.BDDMockito.given;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.util.AssertionErrors.assertTrue;
@@ -155,4 +157,36 @@ public class ControllerTest {
         executorService.shutdown();
         executorService.awaitTermination(10, TimeUnit.SECONDS);
     }
+
+    @Test
+    public void shouldHandleReverseGeocodingForValidCoordinates() throws Exception {
+        double lat = 40.7128;
+        double lon = -74.0060;
+        String expectedResponse = "{\"city\":\"New York\",\"coordinates\":{\"lat\":40.7128,\"lon\":-74.0060}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("New York")))
+                .andExpect(jsonPath("$.coordinates.lat", is(40.7128)))
+                .andExpect(jsonPath("$.coordinates.lon", is(-74.0060)));
+    }
+
+    @Test
+public void shouldReturnErrorWhenInvalidCoordinatesAreProvided() throws Exception {
+    double invalidLat = 91.0; 
+    double validLon = -74.0060;
+
+        try {
+            mockMvc.perform(get("/reverse-geocode")
+                            .param("lat", String.valueOf(invalidLat))
+                            .param("lon", String.valueOf(validLon)))
+                    .andExpect(status().isBadRequest());
+        } catch (Exception e) {
+            fail("Unexpected exception occurred: " + e.getMessage());
+        }
+    }
+
 }
