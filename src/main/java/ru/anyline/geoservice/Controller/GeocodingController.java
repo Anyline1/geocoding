@@ -27,6 +27,9 @@ public class GeocodingController {
 
     @GetMapping("/reverse-geocode")
     public ResponseEntity<?> reverseGeocode(@RequestParam double lat, @RequestParam double lon) {
+        if (lat < -90 || lat > 90) {
+            return ResponseEntity.badRequest().body("Invalid input: latitude must be between -90 and 90");
+        }
         String response = geocodingService.reverseGeocode(lat, lon);
         return ResponseEntity.ok(response);
     }
