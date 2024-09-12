@@ -155,4 +155,20 @@ public class ControllerTest {
         executorService.shutdown();
         executorService.awaitTermination(10, TimeUnit.SECONDS);
     }
+
+    @Test
+    public void shouldHandleReverseGeocodingForValidCoordinates() throws Exception {
+        double lat = 40.7128;
+        double lon = -74.0060;
+        String expectedResponse = "{\"city\":\"New York\",\"coordinates\":{\"lat\":40.7128,\"lon\":-74.0060}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("New York")))
+                .andExpect(jsonPath("$.coordinates.lat", is(40.7128)))
+                .andExpect(jsonPath("$.coordinates.lon", is(-74.0060)));
+    }
 }
