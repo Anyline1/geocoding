@@ -18,6 +18,9 @@ public class GeocodingController {
 
     @GetMapping("/geocode")
     public ResponseEntity<?> geocode(@RequestParam String address) {
+        if (address.matches(".*[';\"].*")) {
+            return ResponseEntity.badRequest().body("Invalid input: potential SQL injection detected");
+        }
         String response = geocodingService.geocode(address);
         return ResponseEntity.ok(response);
     }
