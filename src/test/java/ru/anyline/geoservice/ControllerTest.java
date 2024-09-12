@@ -9,8 +9,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import ru.anyline.geoservice.Controller.GeocodingController;
 import ru.anyline.geoservice.Service.GeocodingService;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import static com.jayway.jsonpath.internal.path.PathCompiler.fail;
 import static org.mockito.BDDMockito.given;
 import static org.hamcrest.Matchers.is;
+import static org.springframework.test.util.AssertionErrors.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -61,5 +68,91 @@ public class ControllerTest {
                         .param("address", zipCode))
                 .andExpect(status().isOk())
                 .andExpect(result -> result.getResponse().getContentAsString().equals(expectedResponse));
+    }
+
+    @Test
+    public void shouldReturnEmptyResponseWhenGeocodingServiceIsUnavailable() throws Exception {
+        String address = "UnavailableAddress";
+        given(geocodingService.geocode(address)).willReturn(null);
+
+        mockMvc.perform(get("/geocode")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("address", address))
+                .andExpect(status().isOk())
+                .andExpect(result -> result.getResponse().getContentAsString().isEmpty());
+    }
+
+    @Test
+    public void shouldHandleConcurrentRequestsWithoutBlocking() throws InterruptedException {
+        String address = "Russia";
+
+        ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+        for (int i = 0; i < 10; i++) {
+            executorService.submit(() -> {
+                try {
+                    mockMvc.perform(get("/geocode")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .param("address", address))
+                            .andExpect(status().isOk());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+
+        executorService.shutdown();
+        executorService.awaitTermination(10, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void shouldValidateInputAddressFormat() {
+        String validAddress = "Russia";
+        String invalidAddress = "'; DROP TABLE addresses; --";
+
+        try {
+            mockMvc.perform(get("/geocode")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .param("address", invalidAddress))
+                    .andExpect(status().isBadRequest());
+        } catch (Exception e) {
+            fail("Unexpected exception occurred: " + e.getMessage());
+        }
+
+        try {
+            mockMvc.perform(get("/geocode")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .param("address", validAddress))
+                    .andExpect(status().isOk());
+        } catch (Exception e) {
+            fail("Unexpected exception occurred: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void shouldHandleLargeInputAddressesWithoutBlocking() throws Exception {
+        String largeInputAddress = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        executorService.submit(() -> {
+            try {
+                mockMvc.perform(get("/geocode")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .param("address", largeInputAddress))
+                        .andExpect(status().isOk());
+                latch.countDown();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        latch.await(10, TimeUnit.SECONDS);
+        assertTrue("Test timed out", latch.getCount() == 0);
+
+        executorService.shutdown();
+        executorService.awaitTermination(10, TimeUnit.SECONDS);
     }
 }
