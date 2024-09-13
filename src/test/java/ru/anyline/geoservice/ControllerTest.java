@@ -275,6 +275,54 @@ public class ControllerTest {
         executorService.awaitTermination(10, TimeUnit.SECONDS);
     }
 
+    @Test
+    public void shouldHandleReverseGeocodingForCoordinatesAtEquator() throws Exception {
+        double equatorLat = 0.0;
+        double validLon = -74.0060;
+        String expectedResponse = "{\"city\":\"Equator\",\"coordinates\":{\"lat\":0.0,\"lon\":-74.0060}}";
+        given(geocodingService.reverseGeocode(equatorLat, validLon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(equatorLat))
+                        .param("lon", String.valueOf(validLon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("Equator")))
+                .andExpect(jsonPath("$.coordinates.lat", is(0.0)))
+                .andExpect(jsonPath("$.coordinates.lon", is(-74.0060)));
+    }
+
+    @Test
+    public void shouldHandleReverseGeocodingForCoordinatesAtPrimeMeridian() throws Exception {
+        double lat = 40.7128;
+        double lon = 0.0;
+        String expectedResponse = "{\"city\":\"Greenwich\",\"coordinates\":{\"lat\":40.7128,\"lon\":0.0}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("Greenwich")))
+                .andExpect(jsonPath("$.coordinates.lat", is(40.7128)))
+                .andExpect(jsonPath("$.coordinates.lon", is(0.0)));
+    }
+
+    @Test
+    public void shouldHandleReverseGeocodingForCoordinatesAtSouthPole() throws Exception {
+        double lat = -90.0;
+        double lon = 0.0;
+        String expectedResponse = "{\"city\":\"South Pole\",\"coordinates\":{\"lat\":-90.0,\"lon\":0.0}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("South Pole")))
+                .andExpect(jsonPath("$.coordinates.lat", is(-90.0)))
+                .andExpect(jsonPath("$.coordinates.lon", is(0.0)));
+    }
+
 
 
 
