@@ -175,7 +175,7 @@ public class ControllerTest {
     }
 
     @Test
-public void shouldReturnErrorWhenInvalidCoordinatesAreProvided() throws Exception {
+    public void shouldReturnErrorWhenInvalidCoordinatesAreProvided() throws Exception {
     double invalidLat = 91.0; 
     double validLon = -74.0060;
 
@@ -188,5 +188,97 @@ public void shouldReturnErrorWhenInvalidCoordinatesAreProvided() throws Exceptio
             fail("Unexpected exception occurred: " + e.getMessage());
         }
     }
+
+    @Test
+    public void shouldValidateInputLatitudeRangeForReverseGeocoding() {
+        double validLat = 40.7128;
+        double invalidLatBelow = -91.0;
+        double invalidLatAbove = 91.0;
+
+        try {
+            mockMvc.perform(get("/reverse-geocode")
+                            .param("lat", String.valueOf(invalidLatBelow))
+                            .param("lon", String.valueOf(validLat)))
+                    .andExpect(status().isBadRequest());
+        } catch (Exception e) {
+            fail("Unexpected exception occurred: " + e.getMessage());
+        }
+
+        try {
+            mockMvc.perform(get("/reverse-geocode")
+                            .param("lat", String.valueOf(invalidLatAbove))
+                            .param("lon", String.valueOf(validLat)))
+                    .andExpect(status().isBadRequest());
+        } catch (Exception e) {
+            fail("Unexpected exception occurred: " + e.getMessage());
+        }
+
+        try {
+            mockMvc.perform(get("/reverse-geocode")
+                            .param("lat", String.valueOf(validLat))
+                            .param("lon", String.valueOf(validLat)))
+                    .andExpect(status().isOk());
+        } catch (Exception e) {
+            fail("Unexpected exception occurred: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void shouldHandleConcurrentReverseGeocodingRequestsWithoutBlocking() throws InterruptedException {
+        double lat = 40.7128;
+        double lon = -74.0060;
+
+        ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+        for (int i = 0; i < 10; i++) {
+            executorService.submit(() -> {
+                try {
+                    mockMvc.perform(get("/reverse-geocode")
+                                    .param("lat", String.valueOf(lat))
+                                    .param("lon", String.valueOf(lon)))
+                            .andExpect(status().isOk());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+
+        executorService.shutdown();
+        executorService.awaitTermination(10, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void shouldHandleLargeInputCoordinatesWithoutBlocking() throws Exception {
+        double lat = 40.7128;
+        double lon = -74.0060;
+
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        executorService.submit(() -> {
+            try {
+                mockMvc.perform(get("/reverse-geocode")
+                                .param("lat", String.valueOf(lat))
+                                .param("lon", String.valueOf(lon)))
+                        .andExpect(status().isOk());
+                latch.countDown();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        latch.await(10, TimeUnit.SECONDS);
+        assertTrue("Test timed out", latch.getCount() == 0);
+
+        executorService.shutdown();
+        executorService.awaitTermination(10, TimeUnit.SECONDS);
+    }
+
+
+
+
+
+
 
 }
