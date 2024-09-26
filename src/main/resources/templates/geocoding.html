@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geocoding Service</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="container">
+    <h1>Geocoding Service</h1>
+
+    <h2>Geocode Address</h2>
+    <form action="/geocode" method="get">
+        <input type="text" id="address" name="address" placeholder="Enter address" required />
+        <button type="submit">Geocode</button>
+    </form>
+
+    <h2>Reverse Geocode</h2>
+    <form action="/reverse-geocode" method="get">
+        <input type="text" id="lat" name="lat" required oninput="formatLatitude()" placeholder="Latitude (e.g., 37.617478)" />
+        <input type="text" id="lon" name="lon" required oninput="formatLongitude()" placeholder="Longitude (e.g., 55.755814)" />
+        <button type="submit">Reverse Geocode</button>
+    </form>
+
+    <div id="results"></div>
+</div>
+
+<script>
+    function formatLatitude() {
+        const latInput = document.getElementById('lat');
+        let value = latInput.value;
+
+        value = value.replace(/[^0-9.-]/g, '');
+
+        if (value.length > 2 && !value.startsWith('-')) {
+            value = value.slice(0, 2) + '.' + value.slice(2);
+        } else if (value.length > 3 && value.startsWith('-')) {
+            value = value.slice(0, 3) + '.' + value.slice(3);
+        }
+
+        latInput.value = value;
+    }
+
+    function formatLongitude() {
+        const lonInput = document.getElementById('lon');
+        let value = lonInput.value;
+
+        value = value.replace(/[^0-9.-]/g, '');
+
+        if (value.length > 2 && !value.startsWith('-')) {
+            value = value.slice(0, 2) + '.' + value.slice(2);
+        } else if (value.length > 3 && value.startsWith('-')) {
+            value = value.slice(0, 3) + '.' + value.slice(3);
+        }
+
+        lonInput.value = value;
+    }
+
+    async function fetchResult(url) {
+        const response = await fetch(url);
+        const resultDiv = document.getElementById('results');
+
+        if (response.ok) {
+            const data = await response.text();
+            resultDiv.innerHTML = `<h3>Result:</h3><pre>${data}</pre>`;
+        } else {
+            const error = await response.text();
+            resultDiv.innerHTML = `<h3>Error:</h3><pre>${error}</pre>`;
+        }
+    }
+
+    document.querySelectorAll('form').forEach(form => {
+        form.onsubmit = function (event) {
+            event.preventDefault();
+            const action = form.getAttribute('action');
+            const params = new URLSearchParams(new FormData(form)).toString();
+            fetchResult(`${action}?${params}`);
+        };
+    });
+</script>
+</body>
+</html>
