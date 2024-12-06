@@ -323,10 +323,4 @@ public class ControllerTest {
                 .andExpect(jsonPath("$.coordinates.lon", is(0.0)));
     }
 
-
-
-
-
-
-
 }

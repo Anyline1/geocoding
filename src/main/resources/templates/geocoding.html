@@ -12,14 +12,14 @@
 
     <h2>Geocode Address</h2>
     <form action="/geocode" method="get">
-        <input type="text" id="address" name="address" placeholder="Enter address" required />
+        <label for="address"></label><input type="text" id="address" name="address" placeholder="Enter address" required />
         <button type="submit">Geocode</button>
     </form>
 
     <h2>Reverse Geocode</h2>
     <form action="/reverse-geocode" method="get">
-        <input type="text" id="lat" name="lat" required oninput="formatLatitude()" placeholder="Latitude (e.g., 37.617478)" />
-        <input type="text" id="lon" name="lon" required oninput="formatLongitude()" placeholder="Longitude (e.g., 55.755814)" />
+        <label for="lat"></label><input type="text" id="lat" name="lat" required oninput="formatLatitude()" placeholder="Latitude (e.g., 37.617478)" />
+        <label for="lon"></label><input type="text" id="lon" name="lon" required oninput="formatLongitude()" placeholder="Longitude (e.g., 55.755814)" />
         <button type="submit">Reverse Geocode</button>
     </form>
 
