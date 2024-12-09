@@ -221,6 +221,17 @@ public class ControllerTest {
                 .andExpect(jsonPath("$.coordinates.lat", is(0.0)))
                 .andExpect(jsonPath("$.coordinates.lon", is(180.0)));
     }
+    
+    @Test
+    public void shouldReturnBadRequestWhenBothLatitudeAndLongitudeAreOutOfValidRange() throws Exception {
+        double invalidLat = 91.0;
+        double invalidLon = 181.0;
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(invalidLat))
+                        .param("lon", String.valueOf(invalidLon)))
+                .andExpect(status().isBadRequest());
+    }
     @Test
     public void shouldHandleReverseGeocodingForValidCoordinates() throws Exception {
         double lat = 40.7128;
