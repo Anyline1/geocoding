@@ -223,6 +223,23 @@ public class ControllerTest {
     }
     
     @Test
+    public void shouldHandleReverseGeocodingForCoordinatesAtNorthPole() throws Exception {
+        double lat = 90.0;
+        double lon = 0.0;
+        String expectedResponse = "{\"city\":\"North Pole\",\"coordinates\":{\"lat\":90.0,\"lon\":0.0}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("North Pole")))
+                .andExpect(jsonPath("$.coordinates.lat", is(90.0)))
+                .andExpect(jsonPath("$.coordinates.lon", is(0.0)));
+    }
+
+    
+    @Test
     public void shouldHandleReverseGeocodingForCoordinatesWithLongitudeAtMaximumPositiveValue() throws Exception {
         double lat = 0.0;
         double lon = 180.0;
