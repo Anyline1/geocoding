@@ -157,6 +157,22 @@ public class ControllerTest {
         executorService.shutdown();
         executorService.awaitTermination(10, TimeUnit.SECONDS);
     }
+    
+    @Test
+    public void shouldReturnValidResponseWhenLatitudeIsZeroAndLongitudeIsZero() throws Exception {
+        double lat = 0.0;
+        double lon = 0.0;
+        String expectedResponse = "{\"city\":\"Equator\",\"coordinates\":{\"lat\":0.0,\"lon\":0.0}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("Equator")))
+                .andExpect(jsonPath("$.coordinates.lat", is(0.0)))
+                .andExpect(jsonPath("$.coordinates.lon", is(0.0)));
+    }
 
     @Test
     public void shouldHandleReverseGeocodingForValidCoordinates() throws Exception {
