@@ -206,7 +206,21 @@ public class ControllerTest {
                 .andExpect(jsonPath("$.coordinates.lon", is(74.0060)));
     }
 
-    
+    @Test
+    public void shouldHandleReverseGeocodingForCoordinatesAtInternationalDateLine() throws Exception {
+        double lat = 0.0;
+        double lon = 180.0;
+        String expectedResponse = "{\"city\":\"International Date Line\",\"coordinates\":{\"lat\":0.0,\"lon\":180.0}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("International Date Line")))
+                .andExpect(jsonPath("$.coordinates.lat", is(0.0)))
+                .andExpect(jsonPath("$.coordinates.lon", is(180.0)));
+    }
     @Test
     public void shouldHandleReverseGeocodingForValidCoordinates() throws Exception {
         double lat = 40.7128;
