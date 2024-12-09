@@ -157,7 +157,112 @@ public class ControllerTest {
         executorService.shutdown();
         executorService.awaitTermination(10, TimeUnit.SECONDS);
     }
+    
+    @Test
+    public void shouldReturnValidResponseWhenLatitudeIsZeroAndLongitudeIsZero() throws Exception {
+        double lat = 0.0;
+        double lon = 0.0;
+        String expectedResponse = "{\"city\":\"Equator\",\"coordinates\":{\"lat\":0.0,\"lon\":0.0}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
 
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("Equator")))
+                .andExpect(jsonPath("$.coordinates.lat", is(0.0)))
+                .andExpect(jsonPath("$.coordinates.lon", is(0.0)));
+    }
+
+    @Test
+    public void shouldReturnValidResponseForReverseGeocodingWhenLatitudeIsNegativeWithinRange() throws Exception {
+        double lat = -45.0;
+        double lon = 170.0;
+        String expectedResponse = "{\"city\":\"Some City\",\"coordinates\":{\"lat\":-45.0,\"lon\":170.0}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("Some City")))
+                .andExpect(jsonPath("$.coordinates.lat", is(-45.0)))
+                .andExpect(jsonPath("$.coordinates.lon", is(170.0)));
+    }
+
+    @Test
+    public void shouldReturnValidResponseForReverseGeocodingWhenLongitudeIsPositiveWithinRange() throws Exception {
+        double lat = 40.7128;
+        double lon = 74.0060;
+        String expectedResponse = "{\"city\":\"Some City\",\"coordinates\":{\"lat\":40.7128,\"lon\":74.0060}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("Some City")))
+                .andExpect(jsonPath("$.coordinates.lat", is(40.7128)))
+                .andExpect(jsonPath("$.coordinates.lon", is(74.0060)));
+    }
+
+    @Test
+    public void shouldHandleReverseGeocodingForCoordinatesAtInternationalDateLine() throws Exception {
+        double lat = 0.0;
+        double lon = 180.0;
+        String expectedResponse = "{\"city\":\"International Date Line\",\"coordinates\":{\"lat\":0.0,\"lon\":180.0}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("International Date Line")))
+                .andExpect(jsonPath("$.coordinates.lat", is(0.0)))
+                .andExpect(jsonPath("$.coordinates.lon", is(180.0)));
+    }
+    
+    @Test
+    public void shouldHandleReverseGeocodingForCoordinatesWithLongitudeAtMaximumPositiveValue() throws Exception {
+        double lat = 0.0;
+        double lon = 180.0;
+        String expectedResponse = "{\"city\":\"International Date Line East\",\"coordinates\":{\"lat\":0.0,\"lon\":180.0}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("International Date Line East")))
+                .andExpect(jsonPath("$.coordinates.lat", is(0.0)))
+                .andExpect(jsonPath("$.coordinates.lon", is(180.0)));
+    }
+    
+    @Test
+    public void shouldHandleReverseGeocodingForCoordinatesWithLongitudeAtMaximumNegativeValue() throws Exception {
+        double lat = 0.0;
+        double lon = -180.0;
+        String expectedResponse = "{\"city\":\"International Date Line West\",\"coordinates\":{\"lat\":0.0,\"lon\":-180.0}}";
+        given(geocodingService.reverseGeocode(lat, lon)).willReturn(expectedResponse);
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city", is("International Date Line West")))
+                .andExpect(jsonPath("$.coordinates.lat", is(0.0)))
+                .andExpect(jsonPath("$.coordinates.lon", is(-180.0)));
+    }
+    @Test
+    public void shouldReturnBadRequestWhenBothLatitudeAndLongitudeAreOutOfValidRange() throws Exception {
+        double invalidLat = 91.0;
+        double invalidLon = 181.0;
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(invalidLat))
+                        .param("lon", String.valueOf(invalidLon)))
+                .andExpect(status().isBadRequest());
+    }
     @Test
     public void shouldHandleReverseGeocodingForValidCoordinates() throws Exception {
         double lat = 40.7128;
