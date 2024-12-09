@@ -238,6 +238,17 @@ public class ControllerTest {
                 .andExpect(jsonPath("$.coordinates.lon", is(0.0)));
     }
 
+    @Test
+    public void shouldReturnBadRequestWhenLatitudeIsExactly90Point1() throws Exception {
+        double lat = 90.1;
+        double lon = 0.0;
+
+        mockMvc.perform(get("/reverse-geocode")
+                        .param("lat", String.valueOf(lat))
+                        .param("lon", String.valueOf(lon)))
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> assertEquals("Invalid input: latitude must be between -90 and 90", result.getResponse().getContentAsString()));
+    }
     
     @Test
     public void shouldHandleReverseGeocodingForCoordinatesWithLongitudeAtMaximumPositiveValue() throws Exception {
